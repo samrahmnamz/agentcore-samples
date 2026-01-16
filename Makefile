@@ -54,9 +54,20 @@ list-memories:
 
 # Check memory contents
 check-memory:
-	@test -n "$(MEMORY_ID)" || (echo "Error: MEMORY_ID not set. Usage: make check-memory MEMORY_ID=<id>" && exit 1)
-	@echo "Checking memory contents..."
-	python scripts/check_memory.py $(MEMORY_ID)
+	@if [ -z "$(MEMORY_ID)" ]; then \
+		if [ -f .memory_id ]; then \
+			echo "Using Memory ID from .memory_id file..."; \
+			MEMORY_ID=$$(cat .memory_id); \
+		else \
+			echo "Error: MEMORY_ID not provided and .memory_id file not found"; \
+			echo "Usage: make check-memory MEMORY_ID=<id> OR run 'make create-memory' first"; \
+			exit 1; \
+		fi; \
+	else \
+		MEMORY_ID=$(MEMORY_ID); \
+	fi; \
+	echo "Checking memory contents for: $$MEMORY_ID"; \
+	python scripts/check_memory.py $$MEMORY_ID
 
 # Test memory operations
 test-memory:

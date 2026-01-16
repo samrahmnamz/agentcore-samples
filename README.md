@@ -196,16 +196,16 @@ Shows all AgentCore memories in your account.
 ### Check Memory Contents
 
 ```bash
+# Automatically uses Memory ID from .memory_id file
+make check-memory
+
+# Or specify a different Memory ID
 make check-memory MEMORY_ID=UserInfoSelfManagedMemory-ABC123
 ```
 
 Inspects what's stored in a specific memory. Useful for debugging.
 
-**Alternative:** If you've already created memory with `make create-memory`, the Memory ID is saved in `.memory_id`:
-
-```bash
-make check-memory MEMORY_ID=$(cat .memory_id)
-```
+**Note:** If you don't provide `MEMORY_ID`, it automatically reads from `.memory_id` file.
 
 ### Test Memory Operations
 
