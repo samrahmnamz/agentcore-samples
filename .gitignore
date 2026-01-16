@@ -2,6 +2,7 @@
 .env
 .env.local
 .agentcore_env
+.memory_id
 
 # Python
 __pycache__/

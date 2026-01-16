@@ -119,8 +119,9 @@ make create-memory
 - Configures trigger conditions (after 2 messages)
 - Links SNS topic and S3 bucket
 - Sets historical context window (20 messages)
+- Saves Memory ID to `.memory_id` file for reuse
 
-**Output:** Save the Memory ID (e.g., `UserInfoSelfManagedMemory-ABC123`)
+**Output:** Memory ID is saved automatically (e.g., `UserInfoSelfManagedMemory-ABC123`)
 
 ---
 
@@ -147,13 +148,16 @@ make dev
 ```
 
 **What it does:**
-- Sets up environment variables
+- Automatically sets up environment variables (if not already done)
+- Reads Memory ID from `.memory_id` file
 - Starts AgentCore development server on port 8081
 - Enables hot reloading for code changes
 
 **Output:** Server runs at `http://localhost:8081/invocations`
 
 **Keep this terminal open** - the server runs in the foreground
+
+**Note:** The agent reads `BEDROCK_AGENTCORE_MEMORY_ID` from the environment to know which memory to use.
 
 ---
 
@@ -189,6 +193,20 @@ make list-memories
 
 Shows all AgentCore memories in your account.
 
+### Check Memory Contents
+
+```bash
+make check-memory MEMORY_ID=UserInfoSelfManagedMemory-ABC123
+```
+
+Inspects what's stored in a specific memory. Useful for debugging.
+
+**Alternative:** If you've already created memory with `make create-memory`, the Memory ID is saved in `.memory_id`:
+
+```bash
+make check-memory MEMORY_ID=$(cat .memory_id)
+```
+
 ### Test Memory Operations
 
 ```bash
@@ -196,14 +214,6 @@ make test-memory
 ```
 
 Writes test records and verifies memory storage/retrieval.
-
-### Check Memory Contents
-
-```bash
-python scripts/check_memory.py <MEMORY_ID>
-```
-
-Inspects what's stored in a specific memory.
 
 ### Clean Up
 
@@ -231,10 +241,12 @@ userinfoagent/
 │   ├── test_memory.py             # Test memory operations
 │   └── check_memory.py            # Debug memory contents
 ├── src/                           # AgentCore agent code
-│   ├── main.py                    # Agent entry point
+│   ├── main.py                    # Agent entry point (reads BEDROCK_AGENTCORE_MEMORY_ID)
 │   ├── mcp_client/                # MCP integration
 │   └── model/                     # Model configuration
 ├── test/                          # Unit tests
+├── .memory_id                     # Saved Memory ID (auto-generated)
+├── .agentcore_env                 # Environment variables (auto-generated)
 ├── Makefile                       # Build automation
 ├── pyproject.toml                 # Python packaging
 ├── requirements.txt               # Dependencies

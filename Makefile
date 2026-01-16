@@ -1,4 +1,4 @@
-.PHONY: help install deploy-infra create-memory update-lambda clean dev test update-lambda-code get-stack-outputs list-memories setup-env
+.PHONY: help install deploy-infra create-memory update-lambda clean dev test update-lambda-code get-stack-outputs list-memories check-memory setup-env
 
 # Configuration
 MEMORY_EXEC_ROLE_ARN := arn:aws:iam::084375560447:role/agentcore-memory-role
@@ -19,6 +19,7 @@ help:
 	@echo "  deploy-infra  - Deploy CloudFormation infrastructure"
 	@echo "  get-stack-outputs - Get CloudFormation outputs and set env vars"
 	@echo "  list-memories - List existing memories"
+	@echo "  check-memory  - Check memory contents (requires MEMORY_ID)"
 	@echo "  setup-env     - Setup environment variables file"
 	@echo "  create-memory - Create self-managed memory"
 	@echo "  update-lambda - Update Lambda with memory ID (requires MEMORY_ID)"
@@ -51,6 +52,12 @@ deploy-infra:
 list-memories:
 	@python -c "import boto3; client = boto3.client('bedrock-agentcore-control', region_name='us-east-1'); memories = client.list_memories().get('memories', []); print(f'Found {len(memories)} memories:'); [print(f'ID: {m.get(\"id\", \"N/A\")}, Keys: {list(m.keys())}') for m in memories]"
 
+# Check memory contents
+check-memory:
+	@test -n "$(MEMORY_ID)" || (echo "Error: MEMORY_ID not set. Usage: make check-memory MEMORY_ID=<id>" && exit 1)
+	@echo "Checking memory contents..."
+	python scripts/check_memory.py $(MEMORY_ID)
+
 # Test memory operations
 test-memory:
 	@echo "Testing memory operations..."
@@ -67,9 +74,10 @@ create-memory:
 	export MEMORY_EVENTS_TOPIC_ARN=$$(aws cloudformation describe-stacks --stack-name userinfoagent-memory-infrastructure-02 --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`MemoryEventsTopicArn`].OutputValue' --output text) && \
 	echo "Creating self-managed memory..." && \
 	MEMORY_ID=$$(python scripts/setup_memory.py) && \
+	echo "$$MEMORY_ID" > .memory_id && \
 	echo "Memory ID: $$MEMORY_ID" && \
 	echo "✓ Memory ready" && \
-	echo "Run: make update-lambda MEMORY_ID=$$MEMORY_ID"
+	echo "Run: make update-lambda-code"
 
 
 
@@ -90,12 +98,16 @@ clean:
 	@echo "Stack deletion initiated. Check AWS console for status."
 
 # Setup environment variables file
-setup-env: create-memory
+setup-env:
+	@if [ ! -f .memory_id ]; then \
+		echo "Error: Memory not created. Run 'make create-memory' first"; \
+		exit 1; \
+	fi
 	@echo "Setting up environment variables..."
 	@echo "export MEMORY_EXEC_ROLE_ARN=$(MEMORY_EXEC_ROLE_ARN)" > .agentcore_env
 	@echo "export MEMORY_EVENTS_BUCKET=$$(aws cloudformation describe-stacks --stack-name userinfoagent-memory-infrastructure-02 --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`MemoryEventsBucket`].OutputValue' --output text)" >> .agentcore_env
 	@echo "export MEMORY_EVENTS_TOPIC_ARN=$$(aws cloudformation describe-stacks --stack-name userinfoagent-memory-infrastructure-02 --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`MemoryEventsTopicArn`].OutputValue' --output text)" >> .agentcore_env
-	@echo "export BEDROCK_AGENTCORE_MEMORY_ID=UserInfoSelfManagedMemory-Vi7ki5GF4T" >> .agentcore_env
+	@echo "export BEDROCK_AGENTCORE_MEMORY_ID=$$(cat .memory_id)" >> .agentcore_env
 	@echo "✓ Environment variables written to .agentcore_env file"
 
 # Complete deployment (infrastructure + memory creation)
@@ -108,7 +120,11 @@ all: deploy-infra
 
 
 # Development target - start the agent
-dev: setup-env
+dev:
+	@if [ ! -f .agentcore_env ]; then \
+		echo "Setting up environment..."; \
+		make setup-env; \
+	fi
 	@echo "Starting agent in development mode..."
 	@bash -c "source .agentcore_env && agentcore dev --port 8081"
 
