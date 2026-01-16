@@ -95,7 +95,7 @@ update-lambda-code:
 	export MEMORY_EVENTS_BUCKET=$$(aws cloudformation describe-stacks --stack-name userinfoagent-memory-infrastructure-02 --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`MemoryEventsBucket`].OutputValue' --output text) && \
 	export MEMORY_EVENTS_TOPIC_ARN=$$(aws cloudformation describe-stacks --stack-name userinfoagent-memory-infrastructure-02 --region us-east-1 --query 'Stacks[0].Outputs[?OutputKey==`MemoryEventsTopicArn`].OutputValue' --output text) && \
 	MEMORY_ID=$$(python scripts/setup_memory.py) && \
-	python update_lambda_minimal.py $$MEMORY_ID
+	python scripts/deploy_lambda.py $$MEMORY_ID
 	@echo "✓ Lambda code updated successfully"
 
 # Clean up - delete CloudFormation stack
